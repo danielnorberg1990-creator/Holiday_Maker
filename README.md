@@ -27,7 +27,7 @@ Database Client eller `mysql -u <user> -p < schema.sql`). `schema.sql`
 kräver en administratör (t.ex. root) eftersom den även skapar användaren
 `testkonto` och ger den rättigheter.
 
-OBS! Ändra connectionstring i HolidayMakerDB.cs till valfri IP-adress där databasen ska husera eller skriv 127.0.0.1 för att köra den lokalt.
+**OBS! Ändra connectionstring i HolidayMakerDB.cs till valfri IP-adress där databasen ska husera eller skriv 127.0.0.1 för att köra den lokalt.**
 
 ## Applikation
 
@@ -65,19 +65,19 @@ Koden är uppdelad i mindre filer efter funktion och område. Filer som
 slutar på `Menu.cs` är konsolgränssnitt och skriver aldrig SQL, medan
 `Db.cs`-filerna innehåller databasanrop och aldrig skriver i konsolen:
 
-| Fil | Innehåll |
-|-----|----------|
-| `Program.cs` | Startpunkt, huvudmeny och appens gemensamma tillstånd (vald kund, sökta datum och antal personer). |
-| `CustomerMenu.cs` | Meny 1 – registrera kund, samt kundvalet (första steget i meny 2, används även i avbokningen och i meny 4). |
-| `SearchMenu.cs` | Meny 2 – välj kund och sök lediga rum (ort, antal personer, datum, valfria filter och sortering), med direktbokning i slutet. |
-| `BookingMenu.cs` | Meny 3 – avboka (via kund eller via rum), meny 4 – ändra antal personer, samt de delade bokningsstegen som direktbokningen i sökningen använder. |
-| `ConsoleInput.cs` | Hjälpmetoder för inläsning av användarinput (frågar om vid felaktig inmatning; i valfria filter betyder Enter "hoppa över"). |
-| `Table.cs` | Gemensam hjälpklass som skriver ut tabeller i konsolen med kolumnrubriker. |
-| `HolidayMakerDb.cs` | Anslutningssträng och gemensamma hjälpmetoder för databasskiktet. |
-| `CustomerDb.cs` | SQL för kunder: lista alla, hämta ett namn och registrera en ny kund. |
-| `SearchDb.cs` | SQL för sökning: orter, boenden, rum per boende och lediga rum. |
-| `BookingDb.cs` | SQL för bokningar: skapa (med kontroll i transaktion), lista och avboka. |
-| `Models.cs` | Record-typer som bär på data ur databasen (Customer, RoomResult, ...). |
+| Fil                |   Innehåll |
+|---------|----------|
+| `Program.cs`       | Startpunkt, huvudmeny och appens gemensamma tillstånd (vald kund, sökta datum och antal personer). |
+| `CustomerMenu.cs`  | Meny 1 – registrera kund, samt kundvalet (första steget i meny 2, används även i avbokningen och i meny 4). |
+| `SearchMenu.cs`    | Meny 2 – välj kund och sök lediga rum (ort, antal personer, datum, valfria filter och sortering), med direktbokning i slutet.              |
+| `BookingMenu.cs`   | Meny 3 – avboka (via kund eller via rum), meny 4 – ändra antal personer, samt de delade bokningsstegen som direktbokningen i sökningen använder.  |
+| `ConsoleInput.cs`  | Hjälpmetoder för inläsning av användarinput (frågar om vid felaktig inmatning; i valfria filter betyder Enter "hoppa över").              |
+| `Table.cs`         | Gemensam hjälpklass som skriver ut tabeller i konsolen med kolumnrubriker. |
+| `HolidayMakerDb.cs`| Anslutningssträng och gemensamma hjälpmetoder för databasskiktet. |
+| `CustomerDb.cs`    | SQL för kunder: lista alla, hämta ett namn och registrera en ny kund. |
+| `SearchDb.cs`      | SQL för sökning: orter, boenden, rum per boende och lediga rum. |
+| `BookingDb.cs`     | SQL för bokningar: skapa (med kontroll i transaktion), lista och avboka. |
+| `Models.cs`        | Record-typer som bär på data ur databasen (Customer, RoomResult, ...). |
 
 ### Anslutning
 
@@ -149,9 +149,9 @@ Manuella tester i applikationen (utgångsläget är testdatan i
 
 ### Datamodellen
 
-Domänen är uppdelad i sex tabeller. En enklare modell hade kunnat ha
-boolean-kolumner (`pool`, `restaurang`) direkt på `Hotels`, men jag valde en
-egen `Amenities`-tabell med en kopplingstabell (`Hotel_x_Amenities`,
+Vi satt tillsammans i grupp och skapade ER-diagrammet. Domänen är uppdelad i sex tabeller. 
+En enklare modell hade kunnat ha boolean-kolumner (`pool`, `restaurang`) direkt på `Hotels`, 
+men vi valde en egen `Amenities`-tabell med en kopplingstabell (`Hotel_x_Amenities`,
 många-till-många): varje ny facilitet kräver ingen schemaändring, och
 "har pool" blir ett sökbar villkor i SQL (`EXISTS`). Rum hänger under sitt
 boende via `hotel_id`, och `room_number` är bara unikt *inom* boendet
@@ -201,7 +201,9 @@ testade medvetet både gränsfallet (samma dag) och omslutande perioder.
   `bokning_status`) så att historiken bevaras.
 - En rums-/prisklasstabell om man vill ha standard- och deluxe-rum.
 - Paginering i sökresultatet om antalet träffar blir stort.
-- Webbgrenssnitt i stället för konsol.
+- Webbgränssnitt i stället för konsol.
+- Ändra name kolumnen under Customers till firstname and lastname 
+för att enklare kunna filtrera på namn.
 
 ### Användning av AI
 
