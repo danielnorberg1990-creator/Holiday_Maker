@@ -62,6 +62,9 @@ CREATE TABLE Rooms (
     capacity           INT             NOT NULL,
     hotel_id           BIGINT UNSIGNED NOT NULL,
     room_number        INT             NOT NULL,
+    -- 1 = rummet är bokat (visas inte som ledigt, kan inte bokas),
+    -- 0 eller NULL = tillgängligt.
+    status             TINYINT(1)      NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_hotel_room_number (hotel_id, room_number),
     CONSTRAINT chk_rooms_capacity CHECK (capacity > 0),

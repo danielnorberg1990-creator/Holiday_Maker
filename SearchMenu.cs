@@ -1,0 +1,128 @@
+// SearchMenu.cs – kundval och rumssökning med direktbokning (meny 2).
+
+namespace Holiday_Maker;
+
+/// <summary>
+/// Konsolgränssnittet för sökfunktionen (meny 2): användaren väljer
+/// först en kund och anger sedan ort, antal personer och sortering.
+/// Sökresultatet visas som en
+/// tabell med information om pool, restaurang och avstånd, och i
+/// slutet kan användaren boka direkt. Check-in/check-out frågas först
+/// när ett rum är valt, och antalet personer i bokningen är det som
+/// angavs vid sökningen (se BookingMenu.BookRoom).
+/// Alla databasanrop görs via SearchDb.
+/// </summary>
+internal static class SearchMenu
+{
+    // ------------------------------------------------------------------
+    // 2. Välj kund och sök lediga rum
+    // -------------------------------------------------
+    /// <summary>
+    /// Menyval 2: "Välj kund och sök lediga rum". Första steget är
+    /// alltid kundvalet (CustomerMenu.ChooseCustomer) – avbryter
+    /// användaren där ("b") hamnar de tillbaka i huvudmenyn – varefter
+    /// sökningen (SearchRooms) startar för den valda kunden.
+    /// </summary>
+    public static void ChooseCustomerAndSearchRooms()
+    {
+        CustomerMenu.ChooseCustomer();
+        if (Program.SelectedCustomerId is null)
+            return;
+        SearchRooms();
+    }
+    /// <summary>
+    /// Leder användaren igenom en rumssökning: ort, antal personer och
+    /// sortering. Check-in/check-out, pool, restaurang och avstånd
+    /// frågas inte – pool, restaurang och avstånd visas istället som
+    /// information för de rum som hittas. I slutet kan användaren boka
+    /// direkt genom att välja ett rum; check-in/check-out frågas först
+    /// när ett rum är valt, och bokningen får antalet personer som
+    /// angavs vid sökningen (se BookingMenu.BookRoom). Antalet
+    /// personer sparas i Program.LastSearchOccupants för bokningen.
+    /// </summary>
+    public static void SearchRooms()
+    {
+        Console.WriteLine("\n-- Sök lediga rum --");
+        Console.WriteLine("  (Tryck b för att gå tillbaka till huvudmenyn)");
+
+        // Ort. Endast de orter som finns i databasen kan väljas – de
+        // visas som en numrerad lista i alfabetisk ordning och
+        // användaren anger siffran. ReadInt frågar om vid felaktig
+        // inmatning (inte ett tal eller utanför intervallet) och
+        // "b"/Enter backar till huvudmenyn.
+        List<string> locations = SearchDb.ListLocations();
+        if (locations.Count == 0)
+        {
+            Console.WriteLine("Inga orter finns i databasen, så ingen sökning kan göras.");
+            return;
+        }
+        Console.WriteLine("Välj ort:");
+        // Visa orterna med löpnummer 1..n (Select lägger till indexen)
+        // så att användaren kan välja ort med en siffra.
+        foreach (var (i, loc) in locations.Select((l, i) => (i + 1, l)))
+            Console.WriteLine($"{i,3} | {loc}");
+        string location = locations[ConsoleInput.ReadInt("Ort: ", 1, locations.Count) - 1];
+
+        // Antal personer – rummet måste rymma minst så många. Talet
+        // sparas också så att det används som antalet personer i
+        // bokningen när ett rum bokas från resultatet – användaren
+        // ska inte behöva ange det två gånger.
+        int occupants = ConsoleInput.ReadInt("Antal personer: ", 1, 99);
+        Program.LastSearchOccupants = occupants;
+
+        // Sortering. 1 = pris per natt (billigast först), 2 = omdöme
+        // (bäst först).
+        int sortChoice = ConsoleInput.ReadInt("Sortera efter 1 = pris/natt, 2 = omdöme: ", 1, 2);
+
+        List<RoomResult> results = SearchDb.SearchRooms(location, occupants, sortChoice);
+
+        if (results.Count == 0)
+        {
+            Console.WriteLine("Inga rum matchade sökningen. Prova annan ort eller färre personer.");
+            return;
+        }
+
+        // Tabell. Pool, restaurang och avstånd visas som information för
+        // varje rum (de frågas alltså inte vid sökningen). Cellerna
+        // samlas i en matris med rubrikrad och renderas av Table.Print,
+        // som beräknar kolumnbredderna från rubriken och alla rader, så
+        // att kolumnerna alltid räcker upp – även om boendenamnen eller
+        // orterna är längre än förväntat.
+        List<string[]> table = new()
+        {
+            new[] { "Id", "Boende", "Ort", "Rum", "Platser", "Pris/natt", "Omdöme", "Pool", "Restaurang", "Till strand", "Till centrum" }
+        };
+        foreach (RoomResult r in results)
+            table.Add(new[]
+            {
+                r.RoomId.ToString(),
+                r.HotelName,
+                r.Location,
+                r.RoomNumber.ToString(),
+                r.Capacity.ToString(),
+                r.PricePerNight.ToString("0.00"),
+                r.Rating.ToString("F1"),
+                r.Pool ? "ja" : "nej",
+                r.Restaurant ? "ja" : "nej",
+                Distance(r.DistanceToBeach),
+                Distance(r.DistanceToCity)
+            });
+
+        // Vilka kolumner som högerjusteras (tal) respektive
+        // vänsterjusteras (text).
+        bool[] right = { true, false, false, true, true, true, true, false, false, true, true };
+
+        Console.WriteLine();
+        Table.Print(table, right);
+        Console.WriteLine($"\n{results.Count} rum hittade.");
+
+        // Sista steget: erbjud direktbokning. Check-in/check-out frågas
+        // först när användaren valt ett rum, och antalet personer är
+        // det som angavs ovan (se BookingMenu.BookRoom).
+        RoomResult room = BookingMenu.PickRoomFromResults(results);
+        BookingMenu.BookRoom(room);
+    }
+
+    /// <summary>Formaterar ett avstånd i meter; "-" om det saknas.</summary>
+    private static string Distance(int? meters) => meters is null ? "-" : $"{meters} m";
+}

@@ -17,12 +17,12 @@ USE Holiday_Maker;
 
 -- Rensa befintlig testdata (ordning: döttertabeller först).
 SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE Bookings;
-TRUNCATE TABLE Hotel_x_Amenities;
-TRUNCATE TABLE Rooms;
-TRUNCATE TABLE Customers;
-TRUNCATE TABLE Hotels;
-TRUNCATE TABLE Amenities;
+DELETE FROM Bookings;
+DELETE FROM Hotel_x_Amenities;
+DELETE FROM Rooms;
+DELETE FROM Customers;
+DELETE FROM Hotels;
+DELETE FROM Amenities;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ----------------------------------------------------------------------------
@@ -58,6 +58,11 @@ INSERT INTO Hotel_x_Amenities (id, hotel_id, amenities_id) VALUES
 
 -- ----------------------------------------------------------------------------
 -- Rum (20 st, kapacitet 1/2/4/6, varierande priser)
+-- status: 1 = bokat (rummet visas inte som ledigt och kan inte bokas),
+--         0 eller NULL = tillgängligt. Kolumnen saknas medvetet i
+--         INSERT:en nedan – eftersom den är NULL-tillåten blir alla
+--         testrum tillgängliga (status = NULL). Sätt t.ex. 1 på ett rum
+--         för att testa:  UPDATE Rooms SET status = 1 WHERE id = 5;
 -- ----------------------------------------------------------------------------
 INSERT INTO Rooms (id, id_price_per_night, capacity, hotel_id, room_number) VALUES
     (1,  1450.00, 2, 1, 101),
