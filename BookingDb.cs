@@ -118,7 +118,7 @@ public static class BookingDb
         catch
         {
             // Vid vilket fel som helst (även egna "rymmer högst N")
-            // ångas transaktionen ut så att ingen halvfärdig
+            // ångras transaktionen så att ingen halvfärdig
             // bokning lämnas kvar.
             transaction.Rollback();
             throw;
@@ -126,7 +126,7 @@ public static class BookingDb
     }
 
     /// <summary>
-    /// Returnerar kundens bokningar som inte är slut (end_date efter
+    /// Returnerar kundens bokningar som inte är förbi slutdatum (end_date efter
     /// idag), sorterade efter startdatum, med rummets kapacitet.
     /// Avslutade vistelser kan inte avbokas och visas därför inte.
     /// Används i meny 3 ("Avboka") och meny 4 ("Ändra antal personer")
@@ -155,7 +155,7 @@ public static class BookingDb
         while (reader.Read())
         {
             // reader.Read() läser den aktuella raden; kolumnvärdena
-            // plockas ut i den ordning de SELECT:ades.
+            // plockas ut i den ordning de valdes.
             bookings.Add(new CustomerBooking(
                 reader.GetInt64(0),
                 reader.GetString(1),
