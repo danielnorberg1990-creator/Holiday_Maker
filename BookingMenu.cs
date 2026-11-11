@@ -271,7 +271,10 @@ internal static class BookingMenu
     /// <summary>
     /// Gemensamt sista steg för båda avbokningsvägarna: en
     /// dubbelkontroll ("ja/nej") så att användaren inte avbokar fel
-    /// bokning, och sedan radering av bokningen.
+    /// bokning, och sedan radering av bokningen. Returnerar DeleteBooking
+    /// false om bokningen inte längre fanns vid raderingstillfället
+    /// (t.ex. om någon annan avbokade i mellan) – då får användaren ett
+    /// tydligt meddelande i stället för en falsk bekräftelse.
     /// </summary>
     private static void DeleteWithConfirmation(long bookingNumber, string description)
     {
@@ -283,16 +286,18 @@ internal static class BookingMenu
 
         try
         {
-            BookingDb.DeleteBooking(bookingNumber);
+            bool deleted = BookingDb.DeleteBooking(bookingNumber);
+            if (!deleted)
+            {
+                Console.WriteLine(
+                    $"Bokning {bookingNumber} fanns inte längre och kunde inte avbokas.");
+                return;
+            }
             Console.WriteLine($"Bokning {bookingNumber} är avbokad. Rummet kan nu bokas igen under perioden.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            // "Ingen bokning med det numret" (t.ex. om någon annan avbokade).
-            Console.WriteLine(ex.Message);
         }
         catch (Exception ex)
         {
+            // T.ex. att databasanslutningen tappades i stunden.
             Console.WriteLine($"Okänt fel: {ex.Message}");
         }
     }

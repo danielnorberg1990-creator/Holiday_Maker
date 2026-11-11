@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Holiday_Maker – SQL-frågor
 -- Skrivna och provrunna i en databasklient innan de togs in i C#-koden.
--- Motsvarande parameteriserade anrop finns i HolidayMakerDb.cs.
+-- Motsvarande parameteriserade anrop finns i SearchDb.cs och BookingDb.cs
+-- (anslutningen och parametrarna sköts gemensamt i HolidayMakerDb.cs).
 -- ============================================================================
 
 USE Holiday_Maker;
@@ -23,6 +24,7 @@ FROM Rooms AS r
 JOIN Hotels AS h ON h.id = r.hotel_id
 WHERE h.location = 'Ystad'
   AND r.capacity >= 2
+  AND (r.status IS NULL OR r.status = 0)
   AND NOT EXISTS (
         SELECT 1
         FROM Bookings AS b
@@ -46,6 +48,7 @@ FROM Rooms AS r
 JOIN Hotels AS h ON h.id = r.hotel_id
 WHERE h.location = 'Ystad'
   AND r.capacity >= 2
+  AND (r.status IS NULL OR r.status = 0)
   AND h.distance_to_beach <= 1000
   AND EXISTS (
         SELECT 1
@@ -78,17 +81,22 @@ WHERE b.customer_id = 1
 ORDER BY b.start_date, b.booking_number;
 
 -- ----------------------------------------------------------------------------
--- 4. Kapacitetskontroll före ändring av antal personer (bokning 7).
---    Endast uppdatera om det nya antalet <= capacity.
+-- 4. Ändra antal personer på en bokning (bokning 7: rum 104, kapacitet 1).
+--    Villkoret "2 <= r.capacity" i WHERE-klausulen gör att ett för stort
+--    tal aldrig sparas – uppdateringen påverkar 0 rader. (I applikationen
+--    är samma kontroll parameteriserad i BookingDb.cs.)
 -- ----------------------------------------------------------------------------
 SELECT r.capacity
 FROM Bookings AS b
 JOIN Rooms AS r ON r.id = b.room_id
 WHERE b.booking_number = 7;
 
-UPDATE Bookings
-SET number_of_occupant = 1
-WHERE booking_number = 7;
+-- Försök att ändra till 2 personer: påverkar 0 rader (kapaciteten är 1).
+UPDATE Bookings AS b
+JOIN Rooms AS r ON r.id = b.room_id
+SET b.number_of_occupant = 2
+WHERE b.booking_number = 7
+  AND 2 <= r.capacity;
 
 -- ----------------------------------------------------------------------------
 -- 5. Avboka en bokning (bokning 3). Rummet kan sedan bokas igen.

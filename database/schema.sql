@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Holiday_Maker – schema
--- MySQL 8.x. Kör detta skript för att skapa databasen från noll.
+-- MySQL 8.x. Kör detta skript för att skapa databasen från noll och
+-- skapa användaren testkonto med fulla behörigheter på databasen.
 -- OBS: skriptet raderar en redan befintlig databas Holiday_Maker.
 -- Motsvarar E/R-diagrammet: Hotels, Rooms, Customers, Bookings,
 -- Amenities och Hotel_x_Amenities.
@@ -11,6 +12,20 @@ DROP DATABASE IF EXISTS Holiday_Maker;
 CREATE DATABASE Holiday_Maker
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_0900_ai_ci;
+
+-- ----------------------------------------------------------------------------
+-- Användare för konsolapplikationen: "testkonto" med fulla behörigheter
+-- på databasen Holiday_Maker (se ConnectionString i HolidayMakerDb.cs).
+-- Hosten "%" tillåter anslutning från vilken dator som helst.
+-- "IF NOT EXISTS" gör att skriptet kan köras om, och ALTER USER ställer
+-- alltid in lösenordet så att det stämmer även om användaren redan fanns.
+-- Kör skriptet som en administratör (t.ex. root) – den användningen
+-- behöver behörighet att skapa användare och ge rättigheter.
+-- ----------------------------------------------------------------------------
+CREATE USER IF NOT EXISTS 'testkonto'@'%' IDENTIFIED BY '123abc';
+ALTER USER 'testkonto'@'%' IDENTIFIED BY '123abc';
+GRANT ALL PRIVILEGES ON Holiday_Maker.* TO 'testkonto'@'%';
+FLUSH PRIVILEGES;
 
 USE Holiday_Maker;
 

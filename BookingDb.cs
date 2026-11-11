@@ -20,7 +20,7 @@ public static class BookingDb
     /// 2. Kontrollerar att ingen annan bokning överlappar perioden.
     /// 3. Beräknar totalpriset (nätter × pris/natt).
     /// 4. Sparar bokningen.
-    /// Misslyckas något steg ångas transaktionen ut och ett
+    /// Misslyckas något steg ångras transaktionen och ett
     /// InvalidOperationException kastas med ett användarvänligt meddelande.
     /// </summary>
     public static BookingConfirmation CreateBooking(

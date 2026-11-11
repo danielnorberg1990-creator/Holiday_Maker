@@ -18,12 +18,14 @@ Schemat följer uppgiftens krav:
 
 | Skript        | Syfte                                                             |
 |---------------|-------------------------------------------------------------------|
-| `schema.sql`  | Skapar tabellerna (idempotent: `DROP IF EXISTS` först).           |
-| `testdata.sql`| 5 boenden på 5 orter, 20 rum, 4 faciliteter (10 kopplingar i `Hotel_x_Amenities`), 5 kunder, 25 bokningar i december 2026. Idempotent (tömmer tabellerna och lägger in på nytt). |
+| `schema.sql`  | Skapar databasen, tabellerna och användaren `testkonto` med fulla rättigheter på Holiday_Maker. Idempotent: `DROP IF EXISTS` först. |
+| `testdata.sql`| 5 boenden på 3 orter, 20 rum, 4 faciliteter (10 kopplingar i `Hotel_x_Amenities`), 5 kunder, 25 bokningar i december 2026. Idempotent (tömmer tabellerna och lägger in på nytt). |
 | `queries.sql` | Exempel-SELECT:ar (sökning, dubbelbokningskontroll, rapporter).   |
 
 Kör skripten i ordningen: `schema.sql` → `testdata.sql` (t.ex. i VS Code
-Database Client eller `mysql -u <user> -p < schema.sql`).
+Database Client eller `mysql -u <user> -p < schema.sql`). `schema.sql`
+kräver en administratör (t.ex. root) eftersom den även skapar användaren
+`testkonto` och ger den rättigheter.
 
 ## Applikation
 
@@ -115,19 +117,27 @@ Manuella tester i applikationen (utgångsläget är testdatan i
    låst till rummets kapacitet i menyn vid bokning.
 5. **Kombinerade sökfiter och båda sorteringsalternativen** – Sök Helsingborg
    12/11–12/12 för 2 personer med kraven *pool* + *max 200 m till centrum* →
-   exakt 4 träffar (rum 201, 202, 204 och 205 på Stadscentrum Hotell, i
-   prisordning; 203 har bara plats för 1 person). Sök sedan Ystad 12/1–12/10
+   exakt 4 träffar, i prisordning: rum 201 (1 200 kr), 205 (1 250 kr),
+   202 (1 900 kr) och 204 (2 800 kr) på Stadscentrum Hotell; 203 har bara
+   plats för 1 person. Sök sedan Ystad 12/1–12/10
    för 2 personer utan filter och växla sortering: *pris* → 14 (1 150 kr),
    102 (1 500 kr), 13 (1 800 kr), 201 (2 400 kr); *omdöme* → Strandhotell
    Ystads rum (4,70) före Pensionat Vid Hamnens (4,10).
-6. **Avbokning frigör rummet** – I "Avboka" (meny 3) välj väg 1 (via kund),
+6. **Ändring av antal personer följer rummets kapacitet** – I "Ändra antal
+   personer" (meny 4) välj Emma Eriksson och bokning 5 (rum 103, ett
+   4-personersrum, 4 pers). Ange 5 personer → frågan accepterar bara 1–4
+   och frågar om. Ange istället 3 och bekräfta → "Bokning 5 har nu 3
+   personer." (Ändra sedan tillbaka till 4.) Gränsen hålls även i
+   databasen: UPDATE:en har villkoret `@occupants <= r.capacity`, så ett
+   för stort tal kan aldrig sparas.
+7. **Avbokning frigör rummet** – I "Avboka" (meny 3) välj väg 1 (via kund),
    välj Emma Eriksson och avboka bokning 5 (rum 103, 5–20/12) – eller
    använd väg 2 (via rum) för att hitta samma bokning via Strandhotell Ystad, rum 103 –
    och sök sedan Ystad 12/7–12/10 för 4 personer → 103 dyker upp igen.
-7. **Uppgifterna finns kvar efter omstart** – Välj 0 (Avsluta), starta
+8. **Uppgifterna finns kvar efter omstart** – Välj 0 (Avsluta), starta
    programmet igen med `dotnet run` → kunder och bokningar som skapats
    finns kvar, eftersom all data ligger i MySQL och inte i applikationen.
-8. **Rum flaggat som bokat visas inte och kan inte bokas** – Sätt t.ex.
+9. **Rum flaggat som bokat visas inte och kan inte bokas** – Sätt t.ex.
    `UPDATE Rooms SET status = 1 WHERE id = 5;` (Strandhotell Ystad, rum
    201) i databasen. Sök sedan Ystad → rum 201 visas inte längre, och
    ett försök att boka det nekas med "Rummet är redan bokat." Sätt
