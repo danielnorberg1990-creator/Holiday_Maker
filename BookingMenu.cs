@@ -30,7 +30,7 @@ internal static class BookingMenu
         // Numrera rummen 1..n (Select lägger till en index på varje
         // element) så att användaren kan peka på dem med en siffra.
         foreach (var (i, r) in results.Select((r, i) => (i + 1, r)))
-            Console.WriteLine($"{i,3} | {r.HotelName}, {r.Location}, rum {r.RoomNumber}, {r.Capacity} platser, {r.PricePerNight:0.00} kr/natt");
+            Console.WriteLine($"{i,3} | {r.HotelName}, {r.Location}, rum {r.RoomNumber}, {r.Capacity} platser, {r.PricePerNight:0.00} kr/natt"); 
 
         int choice = ConsoleInput.ReadInt("Välj rum att boka: ", 1, results.Count);
         return results[choice - 1];
@@ -60,7 +60,7 @@ internal static class BookingMenu
 
         // Antalet personer är redan känt från den sökning rummet kom
         // ifrån (sökningen returnerar bara rum som rymmer minst så
-        // många), så det frågas inte på nytt. (Om ingen sökning körts
+        // många det efterfrågas), så det frågas inte på nytt. (Om ingen sökning körts
         // finns inget tal sparat – då frågas det istället nu.)
         int occupants = Program.LastSearchOccupants;
         if (occupants < 1)
@@ -72,7 +72,7 @@ internal static class BookingMenu
         // Check-in och check-out angavs redan vid sökningen (meny 2) –
         // sökningen visar ju bara rum som är lediga under just den
         // perioden – så datumen tas direkt från Program. (Om BookRoom
-        // nås utan att en sökning körts frågas datumen istället nu.)
+        // nås utan att en sökning körts frågas datumen istället.)
         DateOnly startDate = Program.LastSearchStartDate
             ?? ConsoleInput.ReadDate("Check-in-datum");
         DateOnly endDate = Program.LastSearchEndDate
@@ -106,7 +106,7 @@ internal static class BookingMenu
     // 3. Avboka
     // -------------------------------------------------
     /// <summary>
-    /// Avbokningsmenyn. Användaren väljer först vilken väg hon vill
+    /// Avbokningsmenyn. Användaren väljer först vilken väg man vill
     /// använda för att hitta bokningen:
     ///   1. Via kund – visar först kundlistan, sedan den valda
     ///      kundens namn och dennes bokningar (boende, ort, rum,
@@ -135,13 +135,13 @@ internal static class BookingMenu
     /// <summary>
     /// Avbokningsväg 1: visar först kundlistan så att användaren kan
     /// välja vilken kunds bokningar hon vill se, visar sedan den
-    /// valda kundens namn och dennes bokningar som inte är slut och
+    /// valda kundens namn och dennes bokningar som inte är avslutad och
     /// avbokar den valda efter bekräftelse.
     /// </summary>
     private static void CancelByCustomer()
     {
         // Visa alltid kundlistan först, så att användaren kan välja
-        // vilken kunds bokningar hon vill se – även om en kund redan
+        // vilken kunds bokningar man vill se – även om en kund redan
         // är vald (t.ex. från en sökning i meny 2). Det tidigare valet
         // rensas innan, så att "b" i kundlistan inte behåller den
         // gamla kundens val.
@@ -150,7 +150,7 @@ internal static class BookingMenu
         if (Program.SelectedCustomerId is null)
             return;
         long customerId = Program.SelectedCustomerId.Value;
-        // Hämta kundens namn så att listan nedan visar vars
+        // Hämta kundens namn så att listan nedan visar vilka
         // bokningar det gäller. Namnet kan vara null om kunden inte
         // längre finns – då visas ett fallback-namn i stället.
         string customerName = CustomerDb.GetCustomerName(customerId)
@@ -343,7 +343,7 @@ internal static class BookingMenu
     // ------------------------------------------------------------------
     /// <summary>
     /// Menyval 4: "Ändra antal personer på en bokning". Användaren
-    /// väljer en kund och ser dennes bokningar som inte är slut (samma
+    /// väljer en kund och ser dennes bokningar som inte är avslutade (samma
     /// tabell som i avbokningen, med en kapacitetskolumn), väljer en
     /// bokning och anger ett nytt antal personer. Talet får aldrig
     /// överstiga rummets kapacitet; ändringen sparas i databasen med
@@ -355,7 +355,7 @@ internal static class BookingMenu
         Console.WriteLine("  (Tryck b för att gå tillbaka till huvudmenyn)");
 
         // Visa alltid kundlistan först, så att användaren kan välja
-        // vilken kunds bokningar hon vill se (samma logik som i
+        // vilken kunds bokningar man vill se (samma logik som i
         // avbokningen via kund).
         Program.SelectedCustomerId = null;
         CustomerMenu.ChooseCustomer();

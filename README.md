@@ -18,14 +18,16 @@ Schemat följer uppgiftens krav:
 
 | Skript        | Syfte                                                             |
 |---------------|-------------------------------------------------------------------|
-| `schema.sql`  | Skapar databasen, tabellerna och användaren `testkonto` med fulla rättigheter på Holiday_Maker. Idempotent: `DROP IF EXISTS` först. |
+| `schema.sql`  | Skapar databasen, tabellerna och användaren `testkonto` med fulla rättigheter till Holiday_Maker. Idempotent: `DROP IF EXISTS` först. |
 | `testdata.sql`| 5 boenden på 3 orter, 20 rum, 4 faciliteter (10 kopplingar i `Hotel_x_Amenities`), 5 kunder, 25 bokningar i december 2026. Idempotent (tömmer tabellerna och lägger in på nytt). |
-| `queries.sql` | Exempel-SELECT:ar (sökning, dubbelbokningskontroll, rapporter).   |
+| `queries.sql` | Exempel-queries (sökning, dubbelbokningskontroll, rapporter).   |
 
 Kör skripten i ordningen: `schema.sql` → `testdata.sql` (t.ex. i VS Code
 Database Client eller `mysql -u <user> -p < schema.sql`). `schema.sql`
 kräver en administratör (t.ex. root) eftersom den även skapar användaren
 `testkonto` och ger den rättigheter.
+
+OBS! Ändra connectionstring i HolidayMakerDB.cs till valfri IP-adress där databasen ska husera eller skriv 127.0.0.1 för att köra den lokalt.
 
 ## Applikation
 

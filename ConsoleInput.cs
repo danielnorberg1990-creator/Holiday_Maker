@@ -261,7 +261,7 @@ internal static class ConsoleInput
     }
 
     // ------------------------------------------------------------------
-    // Valfria frågor (sökfiltre): tomt svar (Enter) hoppas över
+    // Valfria frågor (sökfilter): tomt svar (Enter) hoppas över
     // ------------------------------------------------------------------
     /// <summary>
     /// Som ReadYesNo, men ett tomt svar (Enter) betyder "hoppa över"

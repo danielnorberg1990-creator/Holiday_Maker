@@ -70,7 +70,7 @@ internal static class Program
             string? retry = Console.ReadLine();
             if (retry is null || retry.Trim() is "0")
             {
-                Console.WriteLine("Hej då!");
+                Console.WriteLine("Avslutar programmet.");
                 return;
             }
         }
@@ -87,7 +87,7 @@ internal static class Program
                 Console.WriteLine("  3. Avboka");
                 Console.WriteLine("  4. Ändra antal personer på en bokning");
                 Console.WriteLine("  0. Avsluta");
-                Console.WriteLine("  (Vid frågor: skriv \"b\" eller tryck Enter för att backa)");
+                Console.WriteLine("  (För att återgå till menyn: skriv \"b\" eller tryck Enter för att backa)");
 
                 // allowBack: false – i huvudmenyn finns det ingenstans att
                 // backa till, så "b" eller Enter får istället fråga om.
@@ -101,7 +101,7 @@ internal static class Program
                     case 3: BookingMenu.CancelBookingFlow(); break;
                     case 4: BookingMenu.ChangeOccupantsFlow(); break;
                     case 0:
-                        Console.WriteLine("Hej då!");
+                        Console.WriteLine("Avslutar programmet.");
                         return;
                 }
             }

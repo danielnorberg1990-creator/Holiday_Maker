@@ -41,7 +41,7 @@ public static class CustomerDb
     /// <summary>
     /// Returnerar namnet på kunden med givet id (null om ingen kund
     /// finns med det id:et). Används i avbokningsflödet (meny 3) för
-    /// att visa vars bokningar som listas.
+    /// att visa bokningar som kan avbokas.
     /// </summary>
     public static string? GetCustomerName(long customerId)
     {
