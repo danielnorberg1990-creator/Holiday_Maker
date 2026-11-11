@@ -1,14 +1,16 @@
 // BookingMenu.cs – menyfunktioner som handlar om bokningar:
-// avboka (meny 3) samt de delade bokningsstegen som används vid
-// direktbokning i rumssökningen (meny 2).
+// avboka (meny 3), ändra antal personer (meny 4) samt de delade
+// bokningsstegen som används vid direktbokning i rumssökningen
+// (meny 2).
 
 namespace Holiday_Maker;
 
 /// <summary>
 /// Konsolgränssnittet för de bokningsrelaterade menyfunktionerna:
-/// avboka (meny 3), med två vägar – via kund eller via rum.
-/// Klassen innehåller även de delade bokningsstegen (val av rum +
-/// bokning) som rumssökningen (meny 2) använder för direktbokning.
+/// avboka (meny 3), med två vägar – via kund eller via rum, och ändra
+/// antalet personer på en bokning (meny 4). Klassen innehåller även de
+/// delade bokningsstegen (val av rum + bokning) som rumssökningen
+/// (meny 2) använder för direktbokning.
 /// Klassen skriver aldrig SQL själv – alla databasanrop görs via
 /// databasskiktet (BookingDb och SearchDb).
 /// </summary>
@@ -36,12 +38,14 @@ internal static class BookingMenu
 
     /// <summary>
     /// Skapar en bokning för ett valt rum. Check-in- och check-out-
-    /// datum frågas alltså först när kunden valt ett rum. Antalet
-    /// personer är det som angavs vid den sökning rummet kom ifrån
-    /// (Program.LastSearchOccupants) – sökningen garanterar att rummet
-    /// rymmer minst så många, så användaren behöver inte ange talet på
-    /// nytt. Kapacitet och dubbelbokning valideras i databasen (se
-    /// BookingDb.CreateBooking).
+    /// datum samt antalet personer är de som angavs vid den sökning
+    /// rummet kom ifrån (Program.LastSearchStartDate, LastSearchEndDate
+    /// och LastSearchOccupants) – sökningen visar ju bara rum som är
+    /// lediga under just den perioden och som rymmer antalet personer,
+    /// så användaren behöver aldrig ange dem på nytt. (Om BookRoom nås
+    /// utan att en sökning körts frågas datumen och antalet personer
+    /// istället nu.) Kapacitet och dubbelbokning valideras i databasen
+    /// (se BookingDb.CreateBooking).
     /// </summary>
     internal static void BookRoom(RoomResult room)
     {
@@ -56,17 +60,25 @@ internal static class BookingMenu
 
         // Antalet personer är redan känt från den sökning rummet kom
         // ifrån (sökningen returnerar bara rum som rymmer minst så
-        // många), så det frågas inte på nytt.
+        // många), så det frågas inte på nytt. (Om ingen sökning körts
+        // finns inget tal sparat – då frågas det istället nu.)
         int occupants = Program.LastSearchOccupants;
-        Console.WriteLine($"\nRum {room.RoomNumber} på {room.HotelName}, {room.Location} är valt ({occupants} personer, enligt sökningen).");
-
-        DateOnly startDate = ConsoleInput.ReadDate("Check-in-datum");
-        DateOnly endDate = ConsoleInput.ReadDate("Check-out-datum");
-        if (endDate <= startDate)
+        if (occupants < 1)
         {
-            Console.WriteLine("Check-out-datumet måste vara efter check-in-datumet. Ingen bokning skapades.");
-            return;
+            occupants = ConsoleInput.ReadInt("Antal personer: ", 1, 99);
+            Program.LastSearchOccupants = occupants;
         }
+
+        // Check-in och check-out angavs redan vid sökningen (meny 2) –
+        // sökningen visar ju bara rum som är lediga under just den
+        // perioden – så datumen tas direkt från Program. (Om BookRoom
+        // nås utan att en sökning körts frågas datumen istället nu.)
+        DateOnly startDate = Program.LastSearchStartDate
+            ?? ConsoleInput.ReadDate("Check-in-datum");
+        DateOnly endDate = Program.LastSearchEndDate
+            ?? ConsoleInput.ReadDateAfter("Check-out-datum", startDate);
+
+        Console.WriteLine($"\nRum {room.RoomNumber} på {room.HotelName}, {room.Location} är valt ({occupants} personer, {startDate:yyyy-MM-dd} -> {endDate:yyyy-MM-dd}).");
 
         try
         {
@@ -98,8 +110,8 @@ internal static class BookingMenu
     /// använda för att hitta bokningen:
     ///   1. Via kund – visar först kundlistan, sedan den valda
     ///      kundens namn och dennes bokningar (boende, ort, rum,
-    ///      check-in/check-out, antal personer och totalpris) som en
-    ///      komplett tabell.
+    ///      check-in/check-out, antal personer, kapacitet och totalpris)
+    ///      som en komplett tabell.
     ///   2. Via rum – stegvis navigation med korta listor i varje steg:
     ///      användaren väljer först boende, sedan ett rum på boendet
     ///      och ser sedan rummets bokningar som en komplett tabell.
@@ -152,32 +164,9 @@ internal static class BookingMenu
             return;
         }
 
-        Console.WriteLine($"\n-- Bokningar för {customerName} --");
-        Console.WriteLine("  (Tryck b för att gå tillbaka till huvudmenyn)");
-        // Komplett tabell med kolumnrubriker: Bokning är bokningens
-        // nummer, Ort visas för att flera hotell kan ha samma
-        // rumsnummer, Från/Till är check-in/check-out-datum och
-        // Totalpris är priset för hela vistelsen (nätter × pris per
-        // natt).
-        List<string[]> table = new()
-        {
-            new[] { "Nr", "Bokning", "Boende", "Ort", "Rum", "Från", "Till", "Personer", "Totalpris" }
-        };
-        int n = 1;
-        foreach (CustomerBooking b in bookings)
-            table.Add(new[]
-            {
-                n++.ToString(),
-                b.BookingNumber.ToString(),
-                b.HotelName,
-                b.Location,
-                b.RoomNumber.ToString(),
-                b.StartDate.ToString("yyyy-MM-dd"),
-                b.EndDate.ToString("yyyy-MM-dd"),
-                $"{b.Occupants} pers",
-                $"{b.TotalPrice:0.00} kr"
-            });
-        Table.Print(table, new[] { true, true, false, false, true, true, true, true, true });
+        // Gemensam tabell med avbokningen via rum och meny 4 – se
+        // PrintCustomerBookings.
+        PrintCustomerBookings(customerName, bookings);
 
         int choice = ConsoleInput.ReadInt("Välj bokning: ", 1, bookings.Count);
         CustomerBooking booking = bookings[choice - 1];
@@ -305,6 +294,111 @@ internal static class BookingMenu
         catch (Exception ex)
         {
             Console.WriteLine($"Okänt fel: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gemensam tabell över en kunds bokningar, används i avbokningen
+    /// (meny 3, val 1) och i ändringen av antal personer (meny 4).
+    /// Kolumnrubriker: Bokning är bokningens nummer, Ort visas för att
+    /// flera hotell kan ha samma rumsnummer, Från/Till är
+    /// check-in/check-out-datum, Personer är det nuvarande antalet,
+    /// Kapacitet är hur många personer rummet rymmer (övre gräns i
+    /// meny 4) och Totalpris är priset för hela vistelsen (nätter ×
+    /// pris per natt).
+    /// </summary>
+    private static void PrintCustomerBookings(string customerName, List<CustomerBooking> bookings)
+    {
+        Console.WriteLine($"\n-- Bokningar för {customerName} --");
+        Console.WriteLine("  (Tryck b för att gå tillbaka till huvudmenyn)");
+        List<string[]> table = new()
+        {
+            new[] { "Nr", "Bokning", "Boende", "Ort", "Rum", "Från", "Till", "Personer", "Kapacitet", "Totalpris" }
+        };
+        int n = 1;
+        foreach (CustomerBooking b in bookings)
+            table.Add(new[]
+            {
+                n++.ToString(),
+                b.BookingNumber.ToString(),
+                b.HotelName,
+                b.Location,
+                b.RoomNumber.ToString(),
+                b.StartDate.ToString("yyyy-MM-dd"),
+                b.EndDate.ToString("yyyy-MM-dd"),
+                $"{b.Occupants} pers",
+                $"{b.Capacity} pers",
+                $"{b.TotalPrice:0.00} kr"
+            });
+        Table.Print(table, new[] { true, true, false, false, true, true, true, true, true, true });
+    }
+
+    // ------------------------------------------------------------------
+    // 4. Ändra antal personer på en bokning
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Menyval 4: "Ändra antal personer på en bokning". Användaren
+    /// väljer en kund och ser dennes bokningar som inte är slut (samma
+    /// tabell som i avbokningen, med en kapacitetskolumn), väljer en
+    /// bokning och anger ett nytt antal personer. Talet får aldrig
+    /// överstiga rummets kapacitet; ändringen sparas i databasen med
+    /// UPDATE (se BookingDb.UpdateBookingOccupants).
+    /// </summary>
+    public static void ChangeOccupantsFlow()
+    {
+        Console.WriteLine("\n-- Ändra antal personer --");
+        Console.WriteLine("  (Tryck b för att gå tillbaka till huvudmenyn)");
+
+        // Visa alltid kundlistan först, så att användaren kan välja
+        // vilken kunds bokningar hon vill se (samma logik som i
+        // avbokningen via kund).
+        Program.SelectedCustomerId = null;
+        CustomerMenu.ChooseCustomer();
+        if (Program.SelectedCustomerId is null)
+            return;
+        long customerId = Program.SelectedCustomerId.Value;
+        string customerName = CustomerDb.GetCustomerName(customerId)
+            ?? $"kund {customerId}";
+
+        List<CustomerBooking> bookings = BookingDb.ListBookingsForCustomer(customerId);
+        if (bookings.Count == 0)
+        {
+            Console.WriteLine($"Kunden {customerName} har inga kommande bokningar att ändra.");
+            return;
+        }
+
+        PrintCustomerBookings(customerName, bookings);
+
+        int choice = ConsoleInput.ReadInt("Välj bokning: ", 1, bookings.Count);
+        CustomerBooking booking = bookings[choice - 1];
+
+        // Det nya talet får aldrig överstiga rummets kapacitet (gränsen
+        // i frågan), och ändringen kontrolleras även i databasen.
+        int newOccupants = ConsoleInput.ReadInt(
+            $"Nytt antal personer (1-{booking.Capacity}): ", 1, booking.Capacity);
+
+        if (newOccupants == booking.Occupants)
+        {
+            Console.WriteLine($"Antalet personer är redan {newOccupants} – ingenting att ändra.");
+            return;
+        }
+
+        if (!ConsoleInput.ReadYesNo($"Ändra antalet personer på bokning {booking.BookingNumber} från {booking.Occupants} till {newOccupants}?"))
+        {
+            Console.WriteLine("Ändringen avbröts.");
+            return;
+        }
+
+        try
+        {
+            BookingDb.UpdateBookingOccupants(booking.BookingNumber, newOccupants);
+            Console.WriteLine($"Bokning {booking.BookingNumber} har nu {newOccupants} personer.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            // T.ex. "får inte överstiga rummets kapacitet" eller "ingen
+            // bokning med det numret" (t.ex. om den avbokats i mellan).
+            Console.WriteLine(ex.Message);
         }
     }
 }

@@ -35,16 +35,19 @@ Database Client eller `mysql -u <user> -p < schema.sql`).
    e-posten redan finns).
 2. **Välj kund och sök lediga rum** – först väljer man en kund
    (alla kunder listas som en komplett tabell: nr, id, namn, e-post),
-   sedan sökningen: ort, antal personer och
-   sortering (pris per natt
-   eller omdöme). Pool, restaurang och avstånd till strand/centrum visas
+   sedan sökningen: ort, antal personer, check-in och check-out,
+   valfria filter (pool, restaurang, maximalt avstånd till strand
+   respektive centrum – Enter hoppas över) och sortering (pris per
+   natt eller omdöme). Endast rum som är lediga under hela perioden
+   visas, och pool, restaurang samt avstånd till strand/centrum visas
    som information i resultatlistan. Rum som är flaggat som bokat
    (status = 1 i Rooms) visas inte i sökresultatet. I slutet kan man
-   boka direkt: check-in/check-out frågas när rummet är valt, antalet
-   personer är det som angavs vid sökningen, och rumstatus, kapacitet
-   och dubbelbokning valideras i transaktion. Totalpriset (nätter ×
-   pris/natt) beräknas och en bekräftelse visas.
-3. **Avboka** – välj först väg: (1) välj kund och se dennes namn och bokningar som en komplett tabell (boende, ort, rum, check-in/check-out, antal personer, totalpris) eller (2) välj boende, välj rum och se vem som har bokat det. Endast bokningar som inte är slut (check-outdatum efter idag) visas; den valda bekräftas med "ja" och tas sedan bort så rummet kan bokas igen.
+   boka direkt: check-in/check-out och antalet personer tas från
+   sökningen (de frågas alltså aldrig på nytt), och rumstatus,
+   kapacitet och dubbelbokning valideras i transaktion. Totalpriset
+   (nätter × pris/natt) beräknas och en bekräftelse visas.
+3. **Avboka** – välj först väg: (1) välj kund och se dennes namn och bokningar som en komplett tabell (boende, ort, rum, check-in/check-out, antal personer, kapacitet, totalpris) eller (2) välj boende, välj rum och se vem som har bokat det. Endast bokningar som inte är slut (check-outdatum efter idag) visas; den valda bekräftas med "ja" och tas sedan bort så rummet kan bokas igen.
+4. **Ändra antal personer på en bokning** – välj kund, se dennes bokningar som en komplett tabell (samma som i avbokningen, med en kapacitetskolumn), välj en bokning och ange ett nytt antal personer. Talet får aldrig överstiga rummets kapacitet, och ändringen sparas i databasen med `UPDATE`.
 
 ### Kör
 
@@ -60,11 +63,11 @@ slutar på `Menu.cs` är konsolgränssnitt och skriver aldrig SQL, medan
 
 | Fil | Innehåll |
 |-----|----------|
-| `Program.cs` | Startpunkt, huvudmeny och appens gemensamma tillstånd (vald kund, sökta antal personer). |
-| `CustomerMenu.cs` | Meny 1 – registrera kund, samt kundvalet (första steget i meny 2, används även i avbokningen). |
-| `SearchMenu.cs` | Meny 2 – välj kund och sök lediga rum, med direktbokning i slutet. |
-| `BookingMenu.cs` | Meny 3 – avboka (via kund eller via rum), samt de delade bokningsstegen som direktbokningen i sökningen använder. |
-| `ConsoleInput.cs` | Hjälpmetoder för inläsning av användarinput (frågar om vid felaktig inmatning). |
+| `Program.cs` | Startpunkt, huvudmeny och appens gemensamma tillstånd (vald kund, sökta datum och antal personer). |
+| `CustomerMenu.cs` | Meny 1 – registrera kund, samt kundvalet (första steget i meny 2, används även i avbokningen och i meny 4). |
+| `SearchMenu.cs` | Meny 2 – välj kund och sök lediga rum (ort, antal personer, datum, valfria filter och sortering), med direktbokning i slutet. |
+| `BookingMenu.cs` | Meny 3 – avboka (via kund eller via rum), meny 4 – ändra antal personer, samt de delade bokningsstegen som direktbokningen i sökningen använder. |
+| `ConsoleInput.cs` | Hjälpmetoder för inläsning av användarinput (frågar om vid felaktig inmatning; i valfria filter betyder Enter "hoppa över"). |
 | `Table.cs` | Gemensam hjälpklass som skriver ut tabeller i konsolen med kolumnrubriker. |
 | `HolidayMakerDb.cs` | Anslutningssträng och gemensamma hjälpmetoder för databasskiktet. |
 | `CustomerDb.cs` | SQL för kunder: lista alla, hämta ett namn och registrera en ny kund. |
@@ -169,7 +172,7 @@ skulle ha minsta möjliga behörighet (bara `SELECT`/`INSERT`/`UPDATE`/
 
 ### Resultatet
 
-Alla funktioner i uppgiften fungerar, och samtliga sju testscenarion
+Alla funktioner i uppgiften fungerar, och samtliga nio testscenarion
 ovan har jag gått igenom manuellt i applikationen. Felaktig inmatning
 (tomma fält, ogiltiga tecken, text i numeriska fält, felaktiga datum,
 redan registrerad e-post) hanteras

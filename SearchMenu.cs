@@ -4,12 +4,14 @@ namespace Holiday_Maker;
 
 /// <summary>
 /// Konsolgränssnittet för sökfunktionen (meny 2): användaren väljer
-/// först en kund och anger sedan ort, antal personer och sortering.
-/// Sökresultatet visas som en
-/// tabell med information om pool, restaurang och avstånd, och i
-/// slutet kan användaren boka direkt. Check-in/check-out frågas först
-/// när ett rum är valt, och antalet personer i bokningen är det som
-/// angavs vid sökningen (se BookingMenu.BookRoom).
+/// först en kund och anger sedan ort, antal personer, check-in och
+/// check-out, valfria filter (pool, restaurang, maximalt avstånd
+/// till strand respektive centrum) och sortering. Endast rum som är
+/// lediga under hela perioden visas, och resultatet visas som en
+/// tabell med information om pool, restaurang och avstånd. I slutet
+/// kan användaren boka direkt – datumen och antalet personer tas
+/// från sökningen, så de behöver aldrig anges på nytt
+/// (se BookingMenu.BookRoom).
 /// Alla databasanrop görs via SearchDb.
 /// </summary>
 internal static class SearchMenu
@@ -31,14 +33,17 @@ internal static class SearchMenu
         SearchRooms();
     }
     /// <summary>
-    /// Leder användaren igenom en rumssökning: ort, antal personer och
-    /// sortering. Check-in/check-out, pool, restaurang och avstånd
-    /// frågas inte – pool, restaurang och avstånd visas istället som
-    /// information för de rum som hittas. I slutet kan användaren boka
-    /// direkt genom att välja ett rum; check-in/check-out frågas först
-    /// när ett rum är valt, och bokningen får antalet personer som
-    /// angavs vid sökningen (se BookingMenu.BookRoom). Antalet
-    /// personer sparas i Program.LastSearchOccupants för bokningen.
+    /// Leder användaren igenom en rumssökning: ort, antal personer,
+    /// check-in och check-out, valfria filter (pool, restaurang,
+    /// maximalt avstånd till strand/centrum – Enter hoppas över) och
+    /// sortering. Endast rum som är lediga under hela perioden visas;
+    /// pool, restaurang och avstånd visas även som information i
+    /// resultatlistan. I slutet kan användaren boka direkt –
+    /// check-in/check-out och antalet personer tas från sökningen
+    /// (se BookingMenu.BookRoom). Sökta datum, antal personer och
+    /// sortering sparas i Program (LastSearchStartDate,
+    /// LastSearchEndDate och LastSearchOccupants) så att de kan
+    /// användas i bokningen.
     /// </summary>
     public static void SearchRooms()
     {
@@ -70,20 +75,38 @@ internal static class SearchMenu
         int occupants = ConsoleInput.ReadInt("Antal personer: ", 1, 99);
         Program.LastSearchOccupants = occupants;
 
+        // Check-in och check-out: sökningen visar bara rum som är
+        // lediga under hela perioden, så datumen anges redan vid
+        // sökningen. De sparas i Program och återanvänds i bokningen –
+        // användaren behöver aldrig ange datumen på nytt.
+        DateOnly startDate = ConsoleInput.ReadDate("Check-in-datum");
+        DateOnly endDate = ConsoleInput.ReadDateAfter("Check-out-datum", startDate);
+        Program.LastSearchStartDate = startDate;
+        Program.LastSearchEndDate = endDate;
+
+        // Valfria filter: tomt svar (Enter) betyder "hoppa över",
+        // alltså inget krav.
+        bool requirePool = ConsoleInput.ReadYesNoOptional("Kräver boendet pool?");
+        bool requireRestaurant = ConsoleInput.ReadYesNoOptional("Kräver boendet restaurang?");
+        int? maxBeach = ConsoleInput.ReadIntOptional("Maximalt avstånd till stranden (m)", 1, 100_000);
+        int? maxCity = ConsoleInput.ReadIntOptional("Maximalt avstånd till centrum (m)", 1, 100_000);
+
         // Sortering. 1 = pris per natt (billigast först), 2 = omdöme
         // (bäst först).
         int sortChoice = ConsoleInput.ReadInt("Sortera efter 1 = pris/natt, 2 = omdöme: ", 1, 2);
 
-        List<RoomResult> results = SearchDb.SearchRooms(location, occupants, sortChoice);
+        List<RoomResult> results = SearchDb.SearchRooms(
+            location, occupants, startDate, endDate,
+            requirePool, requireRestaurant, maxBeach, maxCity, sortChoice);
 
         if (results.Count == 0)
         {
-            Console.WriteLine("Inga rum matchade sökningen. Prova annan ort eller färre personer.");
+            Console.WriteLine($"Inga lediga rum i {location} rymmer {occupants} personer under perioden {startDate:yyyy-MM-dd} - {endDate:yyyy-MM-dd}.");
             return;
         }
 
-        // Tabell. Pool, restaurang och avstånd visas som information för
-        // varje rum (de frågas alltså inte vid sökningen). Cellerna
+        // Tabell. Pool, restaurang och avstånd visas som information
+        // för varje rum i resultatet. Cellerna
         // samlas i en matris med rubrikrad och renderas av Table.Print,
         // som beräknar kolumnbredderna från rubriken och alla rader, så
         // att kolumnerna alltid räcker upp – även om boendenamnen eller

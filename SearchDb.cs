@@ -6,8 +6,9 @@ namespace Holiday_Maker;
 /// <summary>
 /// SQL-frågor för rummen: listar befintliga orter, listar boenden
 /// samt rum per boende (används i avbokningsmenyn) och hittar
-/// lediga rum som matchar användarens kriterier. Använder de
-/// gemensamma anslutningshjälpmedlen i HolidayMakerDb.
+/// lediga rum som matchar användarens kriterier (period, valfria
+/// filter och sortering). Använder de gemensamma
+/// anslutningshjälpmedlen i HolidayMakerDb.
 /// </summary>
 public static class SearchDb
 {
@@ -87,18 +88,30 @@ public static class SearchDb
 
     /// <summary>
     /// Söker efter alla rum på angiven ort som rymmer angivet antal
-    /// personer. Sökningen frågar inte efter period, pool, restaurang
-    /// eller avstånd – istället returneras pool, restaurang samt
-    /// avstånd till strand/centrum som information för varje rum så
-    /// att de kan visas i resultatlistan (se SearchMenu).
-    /// Rum som är flaggat som bokat (status = 1 i Rooms) exkluderas –
-    /// de är inte lediga; 0 eller NULL räknas som tillgängligt.
-    /// Tillgängligheten för en viss period kontrolleras först när
-    /// användaren bokar rummet (se BookingDb.CreateBooking).
-    /// Resultatet sorteras på pris per natt eller omdöme.
+    /// personer, som är lediga under hela perioden [startDate, endDate)
+    /// och som uppfyller de valda filterna. Rum som är flaggat som
+    /// bokat (status = 1 i Rooms) exkluderas – de är inte lediga; 0
+    /// eller NULL räknas som tillgängligt. Dessutom exkluderas rum
+    /// som har en bokning som överlappar perioden – en bokning b
+    /// överlappar om b.start_date < endDate och b.end_date > startDate
+    /// (halvt öppet intervall, så att utcheckning och incheckning
+    /// samma dag är tillåtet).
+    /// Valfria filter (false/null = inget krav): requirePool och
+    /// requireRestaurant kräver att boendet har pool respektive
+    /// restaurang; maxDistanceToBeach och maxDistanceToCity är gränser
+    /// (i meter) för boendets avstånd. Pool, restaurang samt avstånd
+    /// till strand/centrum returneras även som information för varje
+    /// rum så att de kan visas i resultatlistan (se SearchMenu).
+    /// Resultatet sorteras på pris per natt (sortBy = 1, billigast
+    /// först) eller omdöme (sortBy = 2, högst först). Alla
+    /// användarvärden skickas som parametrar.
     /// </summary>
     public static List<RoomResult> SearchRooms(
-        string location, int occupants, int sortBy)
+        string location, int occupants,
+        DateOnly startDate, DateOnly endDate,
+        bool requirePool, bool requireRestaurant,
+        int? maxDistanceToBeach, int? maxDistanceToCity,
+        int sortBy)
     {
         // Grunderfrågan: förenar Rooms med Hotels (pris och omdöme ligger
         // i olika tabeller) och tilläggar pool, restaurang samt avstånden
@@ -106,7 +119,7 @@ public static class SearchDb
         //
         // EXISTS (SELECT 1 ...) ger 1 om boendet har faciliteten och
         // annars 0 – ett LEFT JOIN hade kunnat multiplicera rader.
-        var baseSql = """
+        var sql = """
             SELECT r.id, h.name, h.location, r.room_number, r.capacity,
                    r.id_price_per_night, h.rating,
                    EXISTS (SELECT 1
@@ -125,7 +138,41 @@ public static class SearchDb
               -- Rum flaggat som bokat (status = 1) visas inte som ledigt;
               -- 0 eller NULL räknas som tillgängligt.
               AND (r.status IS NULL OR r.status = 0)
+              -- Rummet får inte vara bokat under någon del av perioden:
+              -- en bokning b överlappar [startDate, endDate) om
+              -- b.start_date < endDate och b.end_date > startDate.
+              AND NOT EXISTS (SELECT 1
+                              FROM Bookings AS b
+                              WHERE b.room_id = r.id
+                                AND b.start_date < @endDate
+                                AND b.end_date > @startDate)
             """;
+
+        // Valfria filter – varje valt filter lägger till ett
+        // AND-fragment (dess parameter läggs till nedan).
+        if (requirePool)
+            sql += """
+
+              AND EXISTS (SELECT 1
+                          FROM Hotel_x_Amenities AS ha
+                          JOIN Amenities AS a ON a.id = ha.amenities_id
+                          WHERE ha.hotel_id = h.id AND a.name = @poolName)
+            """;
+        if (requireRestaurant)
+            sql += """
+
+              AND EXISTS (SELECT 1
+                          FROM Hotel_x_Amenities AS ha
+                          JOIN Amenities AS a ON a.id = ha.amenities_id
+                          WHERE ha.hotel_id = h.id AND a.name = @restaurantName)
+            """;
+        // Avståndsfilterna utesluter bara boenden vars avstånd är känt
+        // och större än maximumet. Saknat avstånd (NULL, visas som "-"
+        // i tabellen) gör alltså inte att boendet utesluts.
+        if (maxDistanceToBeach is int maxBeach)
+            sql += "\n              AND (h.distance_to_beach <= @maxBeach OR h.distance_to_beach IS NULL)";
+        if (maxDistanceToCity is int maxCity)
+            sql += "\n              AND (h.distance_to_city <= @maxCity OR h.distance_to_city IS NULL)";
 
         // Sorteringsordning: 1 = pris per natt (billigast först),
         // 2 = omdöme (bäst först). sortBy är ett tal som användaren
@@ -139,11 +186,17 @@ public static class SearchDb
         List<RoomResult> results = new();
         using var connection = HolidayMakerDb.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = baseSql + "\n" + orderBy;
+        command.CommandText = sql + "\n" + orderBy;
         command.Parameters.Add(HolidayMakerDb.P("@location", location));
         command.Parameters.Add(HolidayMakerDb.P("@occupants", occupants));
+        command.Parameters.Add(HolidayMakerDb.P("@startDate", startDate));
+        command.Parameters.Add(HolidayMakerDb.P("@endDate", endDate));
         command.Parameters.Add(HolidayMakerDb.P("@poolName", "Pool"));
         command.Parameters.Add(HolidayMakerDb.P("@restaurantName", "Restaurang"));
+        if (maxDistanceToBeach is not null)
+            command.Parameters.Add(HolidayMakerDb.P("@maxBeach", maxDistanceToBeach.Value));
+        if (maxDistanceToCity is not null)
+            command.Parameters.Add(HolidayMakerDb.P("@maxCity", maxDistanceToCity.Value));
 
         using var reader = command.ExecuteReader();
         while (reader.Read())

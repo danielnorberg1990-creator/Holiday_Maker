@@ -1,7 +1,7 @@
 // CustomerMenu.cs – menyfunktioner som handlar om kunder:
 // registrera kund (meny 1) och välj kund (första steget i meny 2
 // "Välj kund och sök lediga rum"; används även i avbokningsflödet,
-// meny 3).
+// meny 3, och i "Ändra antal personer", meny 4).
 
 using MySqlConnector;
 
@@ -10,8 +10,9 @@ namespace Holiday_Maker;
 /// <summary>
 /// Konsolgränssnittet för de kundrelaterade menyfunktionerna:
 /// registrera kund (meny 1) och välj kund (första steget i meny 2;
-/// används även i avbokningsflödet). Klassen skriver
-/// aldrig SQL själv – alla databasanrop görs via CustomerDb.
+/// används även i avbokningsflödet (meny 3) och i meny 4).
+/// Klassen skriver aldrig SQL själv – alla databasanrop görs via
+/// CustomerDb.
 /// </summary>
 internal static class CustomerMenu
 {
@@ -26,7 +27,8 @@ internal static class CustomerMenu
     /// ConsoleInput). Om e-postadressen redan finns (UNIQUE-violation,
     /// fel 1062) fångas felet och ett tydligt meddelande visas. Den
     /// nya kunden blir inte automatiskt vald – en kund väljs alltid
-    /// med "Välj kund" (meny 2, eller avbokningsväg 1), som frågar
+    /// med "Välj kund" (meny 2, avbokningsväg 1 eller meny 4), som
+    /// frågar
     /// efter valet varje gång.
     /// </summary>
     public static void RegisterCustomer()

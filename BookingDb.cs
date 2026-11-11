@@ -1,14 +1,15 @@
 // BookingDb.cs – databasskiktets bokningsrelaterade SQL:
 // skapa bokning (med status-, kapacitets- och dubbelbokningskontroll
-// i transaktion), lista kundens bokningar och avboka.
+// i transaktion), lista kundens bokningar, ändra antal personer och
+// avboka.
 
 namespace Holiday_Maker;
 
 /// <summary>
 /// SQL-frågor som rör Bookings-tabellen: skapa bokning (med status-,
 /// kapacitets- och dubbelbokningskontroll i transaktion), lista
-/// kundens bokningar och avboka. Använder de gemensamma
-/// anslutningshjälpmedlen i HolidayMakerDb.
+/// kundens bokningar, ändra antalet personer på en bokning och avboka.
+/// Använder de gemensamma anslutningshjälpmedlen i HolidayMakerDb.
 /// </summary>
 public static class BookingDb
 {
@@ -126,9 +127,11 @@ public static class BookingDb
 
     /// <summary>
     /// Returnerar kundens bokningar som inte är slut (end_date efter
-    /// idag), sorterade efter startdatum. Avslutade vistelser kan inte
-    /// avbokas och visas därför inte. Används i meny 3 ("Avboka") för
-    /// att lista kundens bokningar.
+    /// idag), sorterade efter startdatum, med rummets kapacitet.
+    /// Avslutade vistelser kan inte avbokas och visas därför inte.
+    /// Används i meny 3 ("Avboka") och meny 4 ("Ändra antal personer")
+    /// för att lista kundens bokningar; kapaciteten är den övre gränsen
+    /// för antalet personer i meny 4.
     /// </summary>
     public static List<CustomerBooking> ListBookingsForCustomer(long customerId)
     {
@@ -137,7 +140,8 @@ public static class BookingDb
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT b.booking_number, h.name, h.location, r.room_number,
-                   b.start_date, b.end_date, b.number_of_occupant, b.total_price
+                   b.start_date, b.end_date, b.number_of_occupant,
+                   r.capacity, b.total_price
             FROM Bookings AS b
             JOIN Rooms AS r ON r.id = b.room_id
             JOIN Hotels AS h ON h.id = r.hotel_id
@@ -160,7 +164,8 @@ public static class BookingDb
                 reader.GetDateOnly(4),
                 reader.GetDateOnly(5),
                 reader.GetInt32(6),
-                reader.GetDecimal(7)));
+                reader.GetInt32(7),
+                reader.GetDecimal(8)));
         }
         return bookings;
     }
@@ -200,6 +205,48 @@ public static class BookingDb
                 reader.GetDecimal(5)));
         }
         return bookings;
+    }
+
+    /// <summary>
+    /// Ändrar antalet personer på en bokning (meny 4). Antalet får
+    /// aldrig överstiga rummets kapacitet – kontrolleras i SQL via
+    /// JOIN på Rooms, så ett för stort tal sparas aldrig även om koden
+    /// missar kontrollen. Returnerar true om en rad ändrades.
+    /// Kastar InvalidOperationException om antalet är under 1, om ingen
+    /// bokning med numret fanns (t.ex. avbokad i mellan) eller om talet
+    /// överskrider rummets kapacitet.
+    /// </summary>
+    public static bool UpdateBookingOccupants(long bookingNumber, int occupants)
+    {
+        if (occupants < 1)
+            throw new InvalidOperationException("Antalet personer måste vara minst 1.");
+
+        using var connection = HolidayMakerDb.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE Bookings AS b
+            JOIN Rooms AS r ON r.id = b.room_id
+            SET b.number_of_occupant = @occupants
+            WHERE b.booking_number = @bookingNumber
+              AND @occupants <= r.capacity
+            """;
+        command.Parameters.Add(HolidayMakerDb.P("@bookingNumber", bookingNumber));
+        command.Parameters.Add(HolidayMakerDb.P("@occupants", occupants));
+
+        if (command.ExecuteNonQuery() > 0)
+            return true;
+
+        // Ingen rad ändrades: antingen finns ingen bokning med numret,
+        // eller så överstiger talet rummets kapacitet. Skilj på fallen
+        // så att användaren får ett korrekt felmeddelande.
+        using var checkCommand = connection.CreateCommand();
+        checkCommand.CommandText =
+            "SELECT 1 FROM Bookings WHERE booking_number = @bookingNumber";
+        checkCommand.Parameters.Add(HolidayMakerDb.P("@bookingNumber", bookingNumber));
+        if (checkCommand.ExecuteScalar() is null)
+            throw new InvalidOperationException("Ingen bokning med det numret finns.");
+        throw new InvalidOperationException(
+            "Antalet personer får inte överstiga rummets kapacitet.");
     }
 
     /// <summary>

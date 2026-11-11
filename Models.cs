@@ -22,10 +22,15 @@ public sealed record RoomResult(
 /// <summary>Bekräftelse på en nyss sparad bokning.</summary>
 public sealed record BookingConfirmation(long BookingNumber, int Nights, decimal TotalPrice);
 
-/// <summary>En bokning, så som den listas för kunden vid avbokning (meny 3).</summary>
+/// <summary>
+/// En bokning, så som den listas för kunden vid avbokning (meny 3) och
+/// vid ändring av antal personer (meny 4). Capacity är rummets kapacitet
+/// – den visas i listan och är den övre gränsen för antalet personer i
+/// meny 4.
+/// </summary>
 public sealed record CustomerBooking(
     long BookingNumber, string HotelName, string Location, int RoomNumber,
-    DateOnly StartDate, DateOnly EndDate, int Occupants, decimal TotalPrice);
+    DateOnly StartDate, DateOnly EndDate, int Occupants, int Capacity, decimal TotalPrice);
 
 /// <summary>
 /// Ett rum med tillhörande boende, så som det listas i avbokningsmenyn

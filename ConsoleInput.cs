@@ -5,7 +5,9 @@
 // "Backa": i varje fråga kan användaren backa till huvudmenyn genom
 // att skriva "b", eller (vid frågor som kräver ett svar) bara trycka
 // Enter – undantaget kundens textfält vid registrering, där ett tomt
-// svar ger istället ett felmeddelande och man kan skriva om raden.
+// svar ger istället ett felmeddelande och man kan skriva om raden. I
+// de valfria filterna i sökningen (meny 2) betyder Enter istället
+// "hoppa över" (nej, eller ingen gräns).
 // Backa gör att BackToMenuException kastas, som fångas i Program.Main.
 
 using System.Text.RegularExpressions;
@@ -255,6 +257,69 @@ internal static class ConsoleInput
             if (answer is "nej" or "n" or "no" or "x")
                 return false;
             Console.WriteLine("Svara ja eller nej.");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Valfria frågor (sökfiltre): tomt svar (Enter) hoppas över
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Som ReadYesNo, men ett tomt svar (Enter) betyder "hoppa över"
+    /// och ger false – användaren behöver inte svara om hon inte vill
+    /// ha filtret. "b" backar till huvudmenyn som i ReadYesNo.
+    /// </summary>
+    public static bool ReadYesNoOptional(string prompt)
+    {
+        while (true)
+        {
+            Console.Write($"{prompt} (ja/nej, Enter = hoppa över): ");
+            string? answer = ReadLineSafe()?.Trim().ToLowerInvariant();
+            if (IsBack(answer))
+                throw new BackToMenuException();
+            if (string.IsNullOrEmpty(answer))
+                return false; // tomt svar = hoppa över filtret
+            if (answer is "ja" or "j" or "yes" or "y")
+                return true;
+            if (answer is "nej" or "n" or "no" or "x")
+                return false;
+            Console.WriteLine("Svara ja eller nej (eller tryck Enter för att hoppa över).");
+        }
+    }
+
+    /// <summary>
+    /// Som ReadInt, men ett tomt svar (Enter) betyder "hoppa över" och
+    /// returnerar null – används för valfria siffervärden som
+    /// maximalt avstånd. "b" backar till huvudmenyn som i ReadInt.
+    /// </summary>
+    public static int? ReadIntOptional(string prompt, int min, int max)
+    {
+        while (true)
+        {
+            Console.Write($"{prompt} (Enter = hoppa över): ");
+            string? input = ReadLineSafe()?.Trim();
+            if (IsBack(input))
+                throw new BackToMenuException();
+            if (string.IsNullOrEmpty(input))
+                return null; // tomt svar = hoppa över filtret
+            if (int.TryParse(input, out int value) && value >= min && value <= max)
+                return value;
+            Console.WriteLine($"Ange ett heltal mellan {min} och {max} (eller Enter för att hoppa över).");
+        }
+    }
+
+    /// <summary>
+    /// Läser in ett datum som måste vara efter "after" (t.ex. check-out
+    /// efter check-in). Frågar om om datumen är felaktiga eller inte
+    /// ligger efter, och "b" backar till huvudmenyn.
+    /// </summary>
+    public static DateOnly ReadDateAfter(string label, DateOnly after)
+    {
+        while (true)
+        {
+            DateOnly value = ReadDate(label);
+            if (value > after)
+                return value;
+            Console.WriteLine($"{label} måste vara efter {after:yyyy-MM-dd}.");
         }
     }
 }
