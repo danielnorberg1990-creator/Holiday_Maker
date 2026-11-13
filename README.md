@@ -52,6 +52,7 @@ kräver en administratör (t.ex. root) eftersom den även skapar användaren
    (nätter × pris/natt) beräknas och en bekräftelse visas.
 3. **Avboka** – välj först väg: (1) välj kund och se dennes namn och bokningar som en komplett tabell (boende, ort, rum, check-in/check-out, antal personer, kapacitet, totalpris) eller (2) välj boende, välj rum och se vem som har bokat det. Endast bokningar som inte är slut (check-outdatum efter idag) visas; den valda bekräftas med "ja" och tas sedan bort så rummet kan bokas igen.
 4. **Ändra antal personer på en bokning** – välj kund, se dennes bokningar som en komplett tabell (samma som i avbokningen, med en kapacitetskolumn), välj en bokning och ange ett nytt antal personer. Talet får aldrig överstiga rummets kapacitet, och ändringen sparas i databasen med `UPDATE`.
+5. **Visa kundens bokningar** – välj en kund och se dennes kommande bokningar som en komplett tabell: bokningsnummer, boende, ort, rum, in-/utcheckningsdatum, antal personer, kapacitet och totalpris. Menyn visar bara – ingenting ändras.
 
 ### Kör
 
@@ -89,7 +90,7 @@ slutar på `Menu.cs` är konsolgränssnitt och skriver aldrig SQL, medan
 | `Program.cs`       | Startpunkt, huvudmeny och appens gemensamma tillstånd (vald kund, sökta datum och antal personer). |
 | `CustomerMenu.cs`  | Meny 1 – registrera kund, samt kundvalet (första steget i meny 2, används även i avbokningen och i meny 4). |
 | `SearchMenu.cs`    | Meny 2 – välj kund och sök lediga rum (ort, antal personer, datum, valfria filter och sortering), med direktbokning i slutet.              |
-| `BookingMenu.cs`   | Meny 3 – avboka (via kund eller via rum), meny 4 – ändra antal personer, samt de delade bokningsstegen som direktbokningen i sökningen använder.  |
+| `BookingMenu.cs`   | Meny 3 – avboka (via kund eller via rum), meny 4 – ändra antal personer, meny 5 – visa kundens bokningar, samt de delade bokningsstegen som direktbokningen i sökningen använder.  |
 | `ConsoleInput.cs`  | Hjälpmetoder för inläsning av användarinput: frågar om vid felaktig inmatning och hanterar Ctrl+Z (EOF) så att programmet inte avslutas; i valfria filter betyder Enter "hoppa över". |
 | `Table.cs`         | Gemensam hjälpklass som skriver ut tabeller i konsolen med kolumnrubriker. |
 | `HolidayMakerDb.cs`| Anslutningssträng och gemensamma hjälpmetoder för databasskiktet. |
@@ -163,6 +164,10 @@ Manuella tester i applikationen (utgångsläget är testdatan i
    201) i databasen. Sök sedan Ystad → rum 201 visas inte längre, och
    ett försök att boka det nekas med "Rummet är redan bokat." Sätt
    tillbaka `status` till `NULL` så rummet kan bokas igen.
+10. **Visa kundens bokningar** – I meny 5 väljs en kund (t.ex. Anna Lind)
+    → hennes kommande bokningar visas i en tabell med bokningsnummer,
+    boende, ort, rum, in-/utcheckningsdatum, antal personer, kapacitet
+    och totalpris. Menyn ändrar ingenting.
 
 ## Reflektion (individuell)
 

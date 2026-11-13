@@ -72,7 +72,9 @@ internal static class Program
             {
                 // ReadLineSafe: Ctrl+Z + Enter visas som ogiltig inmatning
                 // (tomt svar = "prova igen") i stället för att avsluta.
-                retry = ConsoleInput.ReadLineSafe().Trim();
+                // ReadLineSafe kan returnera null (inmatningen stängdes
+                // för gott) – då räknas "" som ett tomt svar.
+                retry = (ConsoleInput.ReadLineSafe() ?? string.Empty).Trim();
             }
             catch (EndOfInputException)
             {
@@ -101,12 +103,13 @@ internal static class Program
                 Console.WriteLine("  2. Välj kund och sök lediga rum");
                 Console.WriteLine("  3. Avboka");
                 Console.WriteLine("  4. Ändra antal personer på en bokning");
+                Console.WriteLine("  5. Visa kundens bokningar");
                 Console.WriteLine("  0. Avsluta");
                 Console.WriteLine("  (För att återgå till menyn: skriv \"b\" eller tryck Enter för att backa)");
 
                 // allowBack: false – i huvudmenyn finns det ingenstans att
                 // backa till, så "b" eller Enter får istället fråga om.
-                int menuChoice = ConsoleInput.ReadInt("Välj: ", 0, 4, allowBack: false);
+                int menuChoice = ConsoleInput.ReadInt("Välj: ", 0, 5, allowBack: false);
 
                 // Varje menyval kallar en metod i rätt menyklass; val 0 avslutar.
                 switch (menuChoice)
@@ -115,6 +118,7 @@ internal static class Program
                     case 2: SearchMenu.ChooseCustomerAndSearchRooms(); break;
                     case 3: BookingMenu.CancelBookingFlow(); break;
                     case 4: BookingMenu.ChangeOccupantsFlow(); break;
+                    case 5: BookingMenu.ShowBookingsFlow(); break;
                     case 0:
                         Console.WriteLine("Avslutar programmet.");
                         return;

@@ -1,15 +1,15 @@
 // BookingMenu.cs – menyfunktioner som handlar om bokningar:
-// avboka (meny 3), ändra antal personer (meny 4) samt de delade
-// bokningsstegen som används vid direktbokning i rumssökningen
-// (meny 2).
+// avboka (meny 3), ändra antal personer (meny 4), visa kundens
+// bokningar (meny 5) samt de delade bokningsstegen som används vid
+// direktbokning i rumssökningen (meny 2).
 
 namespace Holiday_Maker;
 
 /// <summary>
 /// Konsolgränssnittet för de bokningsrelaterade menyfunktionerna:
-/// avboka (meny 3), med två vägar – via kund eller via rum, och ändra
-/// antalet personer på en bokning (meny 4). Klassen innehåller även de
-/// delade bokningsstegen (val av rum + bokning) som rumssökningen
+/// avboka (meny 3), med två vägar – via kund eller via rum, ändra
+/// antalet personer på en bokning (meny 4) och visa kundens bokningar
+/// (meny 5). Klassen innehåller även de delade bokningsstegen (val av rum + bokning) som rumssökningen
 /// (meny 2) använder för direktbokning.
 /// Klassen skriver aldrig SQL själv – alla databasanrop görs via
 /// databasskiktet (BookingDb och SearchDb).
@@ -405,5 +405,42 @@ internal static class BookingMenu
             // bokning med det numret" (t.ex. om den avbokats i mellan).
             Console.WriteLine(ex.Message);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 5. Visa kundens bokningar
+    // ------------------------------------------------------------------
+    /// <summary>
+    /// Menyval 5: "Visa kundens bokningar". Användaren väljer en kund
+    /// och ser dennes bokningar som inte är avslutade (samma tabell som
+    /// i avbokningen via kund och i "Ändra antal personer"):
+    /// bokningsnummer, boende, ort, rum, in-/utcheckningsdatum, antal
+    /// personer, kapacitet och totalpris. Menyn är enbart avsedd att
+    /// visa – ingenting kan ändras eller avbokas här.
+    /// </summary>
+    public static void ShowBookingsFlow()
+    {
+        Console.WriteLine("\n-- Visa kundens bokningar --");
+        Console.WriteLine("  (Tryck b för att gå tillbaka till huvudmenyn)");
+
+        // Visa alltid kundlistan först, så att användaren kan välja
+        // vilken kunds bokningar man vill se (samma logik som i
+        // avbokningen via kund).
+        Program.SelectedCustomerId = null;
+        CustomerMenu.ChooseCustomer();
+        if (Program.SelectedCustomerId is null)
+            return;
+        long customerId = Program.SelectedCustomerId.Value;
+        string customerName = CustomerDb.GetCustomerName(customerId)
+            ?? $"kund {customerId}";
+
+        List<CustomerBooking> bookings = BookingDb.ListBookingsForCustomer(customerId);
+        if (bookings.Count == 0)
+        {
+            Console.WriteLine($"Kunden {customerName} har inga kommande bokningar.");
+            return;
+        }
+
+        PrintCustomerBookings(customerName, bookings);
     }
 }
