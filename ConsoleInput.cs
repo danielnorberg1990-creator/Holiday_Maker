@@ -9,6 +9,16 @@
 // de valfria filterna i sökningen (meny 2) betyder Enter istället
 // "hoppa över" (nej, eller ingen gräns).
 // Backa gör att BackToMenuException kastas, som fångas i Program.Main.
+//
+// Ctrl+Z: i en interaktiv Windowskonsol markerar Ctrl+Z (EOF-tecknet)
+// radens slut när Enter trycks, och Console.ReadLine returnerar null.
+// Programmet avslutas inte: ReadLineSafe visar ett felmeddelande och
+// behandlar raden som tom inmatning, så frågan ställs på nytt – eller
+// så får tomma svaret sin vanliga verkan (backa till huvudmenyn, eller
+// "hoppa över" i de valfria filterna). Endast om inmatningen är
+// omdirigerad (t.ex. pipad in) och tar slut, eller om EOF kommer
+// upprepade gånger utan att användaren hunnit skriva något, kastas
+// EndOfInputException och Program.Main avslutar programmet ordentligt.
 
 using System.Text.RegularExpressions;
 
@@ -25,10 +35,11 @@ internal sealed class BackToMenuException : Exception
 }
 
 /// <summary>
-/// Kastas när inmatningskanalen stängs (Console.ReadLine returnerar
-/// null, t.ex. efter Ctrl+Z i konsolen eller när inmatning som pipats
-/// in tar slut). Program.Main fångar den och avslutar programmet
-/// ordentligt istället för att sitta i en oändlig frågeloop.
+/// Kastas när inmatningskanalen är slut för gott: inmatningen är
+/// omdirigerad (t.ex. pipad in) och har tagit slut, eller så kommer
+/// EOF (Ctrl+Z + Enter) så upprepade gånger i snabb följd att det inte
+/// kan ha skrivits av användaren. Program.Main fångar den och avslutar
+/// programmet ordentligt istället för att sitta i en oändlig frågeloop.
 /// </summary>
 internal sealed class EndOfInputException : Exception
 {
@@ -42,16 +53,58 @@ internal sealed class EndOfInputException : Exception
 /// </summary>
 internal static class ConsoleInput
 {
+    // Säkerhetsnät mot oändlig loop vid stängd inmatningskanal: om
+    // ReadLine returnerar null två gånger i rad inom EofWindowMs kan det
+    // inte vara användaren som tryckt Ctrl+Z (ingen hinner trycka det
+    // två gånger på under en halva sekund) – då är kanalen stängd.
+    private static long _lastEofAt = long.MinValue;
+    private static int _eofStreak;
+    private const int EofWindowMs = 500;
+
     /// <summary>
-    /// Läser en rad från konsolen. Om ReadLine returnerar null
-    /// (inmatningen stängdes) kastas EndOfInputException.
+    /// Läser en rad från konsolen. Om ReadLine returnerar null (EOF)
+    /// skiljer vi på tre fall:
+    ///  1. Interaktiv konsol – användaren tryckte Ctrl+Z + Enter.
+    ///     Programmet avslutas INTE: ett felmeddelande visas och ""
+    ///     returneras, så den omkallande metoden behandlar raden som
+    ///     en vanlig tom inmatning (frågan ställs på nytt, eller så
+    ///     backar/hoppar den över precis som vid ett tomt svar).
+    ///  2. Omdirigerad inmatning (t.ex. pipad in) som tar slut –
+    ///     EndOfInputException, ingen användare finns kvar att fråga.
+    ///  3. EOF upprepas i snabb följd – kanalen är stängd för gott,
+    ///     EndOfInputException (säkerhetsnätet _eofStreak).
     /// </summary>
     internal static string? ReadLineSafe()
     {
         string? line = Console.ReadLine();
-        if (line is null)
+        if (line is not null)
+        {
+            _eofStreak = 0; // en vanlig rad – räkna om EOF-sekvensen
+            return line;
+        }
+
+        // EOF: ReadLine returnerade null.
+        if (Console.IsInputRedirected)
+        {
+            // Pipad/omdirigerad inmatning tar slut för gott.
             throw new EndOfInputException();
-        return line;
+        }
+
+        // Interaktiv konsol: användaren tryckte Ctrl+Z + Enter.
+        long now = Environment.TickCount64;
+        _eofStreak = now - _lastEofAt < EofWindowMs ? _eofStreak + 1 : 1;
+        _lastEofAt = now;
+        if (_eofStreak >= 2)
+        {
+            // Två EOF:er i snabb följd – inmatningskanalen är stängd
+            // trots att den inte är omdirigerad; avsluta ordentligt.
+            throw new EndOfInputException();
+        }
+
+        // Behandla raden som ogiltig inmatning: meddelande + tomt svar,
+        // så att den omkallande metoden gör som vid ett tomt svar.
+        Console.WriteLine("Ogiltig inmatning (Ctrl+Z) – raden ignoreras.");
+        return string.Empty;
     }
 
     /// <summary>"b" (stort eller litet) betyder alltid "backa".</summary>

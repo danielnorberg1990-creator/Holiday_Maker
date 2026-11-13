@@ -59,6 +59,25 @@ kräver en administratör (t.ex. root) eftersom den även skapar användaren
 dotnet run
 ```
 
+### Felaktig inmatning och Ctrl+Z
+
+All inmatning går genom hjälpmetoderna i `ConsoleInput.cs`, som frågar om
+tills ett giltigt svar är skrivet – felaktig inmatning kraschar aldrig
+programmet:
+
+- **Felaktigt svar** (t.ex. text i ett numeriskt fält, ogiltig e-post eller
+  fel datumformat) ger ett felmeddelande och frågan ställs på nytt.
+- **Enter** i en fråga som kräver svar backar till huvudmenyn, och `"b"`
+  backar i alla frågor; i de valfria sökfiltren betyder Enter "hoppa över".
+- **Ctrl+Z + Enter** (EOF) i konsolen avslutar inte programmet:
+  `Ogiltig inmatning (Ctrl+Z) – raden ignoreras.` visas och raden
+  behandlas som ett tomt svar, så frågan ställs på nytt.
+- **Inmatning stängd för gott** – pipad inmatning som tar slut eller
+  Ctrl+Z + Enter två gånger i snabb följd – avslutar programmet
+  ordentligt med meddelandet `Inmatningen stängdes – programmet avslutas.`
+- **Databasanslutningen går inte** vid start: i stället för att krascha
+  erbjuder programmet att prova igen (Enter) eller avsluta (0).
+
 ### Kodstruktur
 
 Koden är uppdelad i mindre filer efter funktion och område. Filer som
@@ -71,7 +90,7 @@ slutar på `Menu.cs` är konsolgränssnitt och skriver aldrig SQL, medan
 | `CustomerMenu.cs`  | Meny 1 – registrera kund, samt kundvalet (första steget i meny 2, används även i avbokningen och i meny 4). |
 | `SearchMenu.cs`    | Meny 2 – välj kund och sök lediga rum (ort, antal personer, datum, valfria filter och sortering), med direktbokning i slutet.              |
 | `BookingMenu.cs`   | Meny 3 – avboka (via kund eller via rum), meny 4 – ändra antal personer, samt de delade bokningsstegen som direktbokningen i sökningen använder.  |
-| `ConsoleInput.cs`  | Hjälpmetoder för inläsning av användarinput (frågar om vid felaktig inmatning; i valfria filter betyder Enter "hoppa över").              |
+| `ConsoleInput.cs`  | Hjälpmetoder för inläsning av användarinput: frågar om vid felaktig inmatning och hanterar Ctrl+Z (EOF) så att programmet inte avslutas; i valfria filter betyder Enter "hoppa över". |
 | `Table.cs`         | Gemensam hjälpklass som skriver ut tabeller i konsolen med kolumnrubriker. |
 | `HolidayMakerDb.cs`| Anslutningssträng och gemensamma hjälpmetoder för databasskiktet. |
 | `CustomerDb.cs`    | SQL för kunder: lista alla, hämta ett namn och registrera en ny kund. |

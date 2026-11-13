@@ -67,8 +67,23 @@ internal static class Program
             Console.WriteLine("Kontrollera Server, User Id och Password i HolidayMakerDb.cs.");
             Console.WriteLine();
             Console.Write("Tryck Enter för att prova igen, eller skriv 0 för att avsluta: ");
-            string? retry = Console.ReadLine();
-            if (retry is null || retry.Trim() is "0")
+            string? retry;
+            try
+            {
+                // ReadLineSafe: Ctrl+Z + Enter visas som ogiltig inmatning
+                // (tomt svar = "prova igen") i stället för att avsluta.
+                retry = ConsoleInput.ReadLineSafe().Trim();
+            }
+            catch (EndOfInputException)
+            {
+                // Inmatningskanalen stängdes för gott (t.ex. pipad
+                // inmatning som tar slut, eller upprepade Ctrl+Z) –
+                // avsluta ordentligt.
+                Console.WriteLine();
+                Console.WriteLine("Inmatningen stängdes – programmet avslutas.");
+                return;
+            }
+            if (retry is null || retry is "0")
             {
                 Console.WriteLine("Avslutar programmet.");
                 return;
@@ -113,8 +128,10 @@ internal static class Program
             }
             catch (EndOfInputException)
             {
-                // Inmatningskanalen stängdes (t.ex. Ctrl+Z) – det finns
-                // inget mer programmet kan göra, så avsluta ordentligt.
+                // Inmatningskanalen stängdes för gott (t.ex. pipad
+                // inmatning som tar slut, eller upprepade Ctrl+Z) – det
+                // finns inget mer programmet kan göra, så avsluta
+                // ordentligt.
                 Console.WriteLine();
                 Console.WriteLine("Inmatningen stängdes – programmet avslutas.");
                 return;
